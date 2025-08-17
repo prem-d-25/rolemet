@@ -35,35 +35,42 @@ const langFlowGetScore = async (resumeText = "", jobDescription = "") => {
     }
 
     const langflowOutput = data?.outputs?.[0]?.outputs?.[0]?.artifacts?.message;
-    if (!langflowOutput) return { score: null, suggestions: [], analysis: {}, raw: data };
+    if (!langflowOutput)
+      return { score: null, suggestions: [], analysis: {}, raw: data };
 
     console.log("LangFlow extracted message:", langflowOutput);
 
     // --- Remove any leading/trailing whitespace and optional Markdown ```
-    let cleanedMessage = langflowOutput.trim();
+    // Remove any leading/trailing whitespace
+let cleanedMessage = langflowOutput.trim();
 
-    // Remove ```json ... ``` if present
-    const markdownMatch = cleanedMessage.match(/```json([\s\S]*?)```/);
-    if (markdownMatch) {
-      cleanedMessage = markdownMatch[1].trim();
-    }
+// Remove ```json ... ``` or ``` ... ``` if present
+const markdownMatch = cleanedMessage.match(/```(?:json)?\s*([\s\S]*?)```/i);
+if (markdownMatch) {
+  cleanedMessage = markdownMatch[1].trim();
+}
 
-    // Try parsing as JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanedMessage);
-    } catch (e) {
-      console.log("Failed to parse JSON from LangFlow output:", cleanedMessage);
-      return { score: null, suggestions: [], analysis: {}, raw: cleanedMessage };
-    }
+// Now safely parse JSON
+let parsed;
+try {
+  parsed = JSON.parse(cleanedMessage);
+} catch (e) {
+  console.log("Failed to parse JSON from LangFlow output:", cleanedMessage);
+  return {
+    score: null,
+    suggestions: [],
+    analysis: {},
+    raw: cleanedMessage,
+  };
+}
 
-    // Return structured response
-    return {
-      score: parsed?.resume_match_score ?? null,
-      suggestions: parsed?.improvement_suggestions ?? [],
-      analysis: parsed?.analysis ?? {},
-      raw: parsed, // full parsed object for debugging
-    };
+// Return structured response
+return {
+  score: parsed?.resumeMatchScore ?? null,
+  suggestions: parsed?.improvementSuggestions ?? [],
+  analysis: parsed?.analysis ?? {},
+  raw: parsed,
+};
 
   } catch (err) {
     console.error("LangFlow Parse Error:", err);
